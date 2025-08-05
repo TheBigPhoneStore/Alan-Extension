@@ -10,8 +10,7 @@
     "128": "128.png"
   },
   "permissions": [
-    "activeTab",
-    "storage"
+    "activeTab"
   ],
   "host_permissions": [
     "https://www.tidio.com/panel/inbox/*",

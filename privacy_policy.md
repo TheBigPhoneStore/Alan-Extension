@@ -8,12 +8,11 @@ Thank you for using **Alan Autofill** (“the Extension”). This Privacy Policy
 
 ## 1. Information We Handle
 
-The Extension is designed to minimize data handling. We **do not collect or store any of your personal information** on our servers.
+The Extension is designed to minimize data handling. We **do not collect or store any of your personal information**.
 
 To provide its features, the Extension processes the following information:
 
 - **Ticket ID:** The Extension reads the ticket ID directly from the Tidio URL you are currently viewing.
-- **No Local Storage:** The Extension does not store any persistent data in your browser’s local storage.
 
 ---
 
