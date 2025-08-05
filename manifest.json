@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Alan Autofill",
+  "version": "1.0.0",
+  "description": "Assists with customer support tickets on Tidio by showing suggested replies and autofill for The Big Phone Store. For internal company use only.",
+  "permissions": [
+    "activeTab",
+    "storage" 
+  ],
+  "host_permissions": [
+    "https://www.tidio.com/panel/inbox/*"
+  ],
+  "action": {
+    "default_title": "Alan Autofill"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.tidio.com/panel/inbox/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
