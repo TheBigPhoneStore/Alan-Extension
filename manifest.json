@@ -8,7 +8,8 @@
     "storage" 
   ],
   "host_permissions": [
-    "https://www.tidio.com/panel/inbox/*"
+    "https://www.tidio.com/panel/inbox/*",
+    "https://script.google.com/"
   ],
   "action": {
     "default_title": "Alan Autofill"
