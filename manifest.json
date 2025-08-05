@@ -3,22 +3,33 @@
   "name": "Alan Autofill",
   "version": "1.0.0",
   "description": "Assists with customer support tickets on Tidio by showing suggested replies and autofill for The Big Phone Store. For internal company use only.",
+  "icons": {
+    "16": "16.png",
+    "32": "32.png",
+    "48": "48.png",
+    "128": "128.png"
+  },
   "permissions": [
     "activeTab",
-    "storage" 
+    "storage"
   ],
   "host_permissions": [
     "https://www.tidio.com/panel/inbox/*",
     "https://script.google.com/"
   ],
   "action": {
-    "default_title": "Alan Autofill"
+    "default_title": "Alan Autofill",
+    "default_icon": {
+      "16": "16.png",
+      "32": "32.png",
+      "48": "48.png"
+    }
   },
   "content_scripts": [
     {
       "matches": ["https://www.tidio.com/panel/inbox/*"],
       "js": ["content.js"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
   ]
 }
