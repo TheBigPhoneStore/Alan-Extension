@@ -3,13 +3,22 @@ console.log("Ticket reply script loaded and observing for changes...");
 const scriptUrl = "https://script.google.com/macros/s/AKfycbwup1NcdPs9oqNSxDHw-yDiQrFkI2pSVi9Wgt_K2v7hvbeBB3HGmK0mgfXclYSw9VZ7/exec";
 let currentRowNumber = null;
 let currentSuggestedReply = null;
+let suggestionUsed = false; // Track if the suggestion was inserted
 
 const buttonListenersAdded = new WeakSet();
 const editorListenersAdded = new WeakSet();
 
+function removeSignature(text) {
+    // This regex looks for the signature at the end of the string,
+    // allowing for variable whitespace (including newlines) between the parts.
+    const signatureRegex = /Kind Regards,\s*Alan\s*The Big Phone Store\s*$/;
+    return text.replace(signatureRegex, "").trim();
+}
+
 async function getTicketReply(ticketId) {
     currentRowNumber = null;
     currentSuggestedReply = "Loading...";
+    suggestionUsed = false; // Reset for new ticket
     updatePlaceholder();
 
     const url = new URL(scriptUrl);
@@ -25,7 +34,7 @@ async function getTicketReply(ticketId) {
             const data = JSON.parse(responseText);
             if (data.reply && data.rowNumber) {
                 currentRowNumber = data.rowNumber;
-                currentSuggestedReply = data.reply;
+                currentSuggestedReply = removeSignature(data.reply);
             } else {
                 currentSuggestedReply = "No suggested reply found for this ticket.";
             }
@@ -35,10 +44,17 @@ async function getTicketReply(ticketId) {
     } catch (error) {
         console.error("Error fetching ticket reply:", error);
         currentSuggestedReply = "Error fetching reply. See console for details.";
+    } finally {
+        updatePlaceholder();
     }
 }
 
 async function markReplyAsSent() {
+    if (!suggestionUsed) {
+        console.log("Suggestion not used, not marking as sent via extension.");
+        return;
+    }
+
     if (currentRowNumber === null) {
         console.warn("No row number available, cannot mark as sent.");
         return;
@@ -47,11 +63,15 @@ async function markReplyAsSent() {
     const editor = document.querySelector('div[data-testid="rich-text-editor"]');
     const currentTextInEditor = editor ? editor.textContent : "";
 
-    // Check for amendment by comparing the current text with the suggestion.
-    // This is more reliable than listening for input events.
+    const isPlaceholder = currentSuggestedReply.includes("No suggested reply") ||
+                          currentSuggestedReply.includes("Loading...") ||
+                          currentSuggestedReply.includes("Error fetching reply");
+
     if (currentTextInEditor !== currentSuggestedReply) {
-        console.log("Text has been modified. Marking as amended first.");
-        await markReplyAsAmended();
+        if (!isPlaceholder) {
+            console.log("Text has been modified. Marking as amended first.");
+            await markReplyAsAmended();
+        }
     }
 
     console.log(`Marking row ${currentRowNumber} as sent.`);
@@ -68,17 +88,50 @@ async function markReplyAsSent() {
 }
 
 async function markReplyAsAmended() {
-    if (currentRowNumber === null) return;
-    console.log(`Marking row ${currentRowNumber} as amended.`);
-    const url = new URL(scriptUrl);
-    url.searchParams.append("action", "markAmended");
-    url.searchParams.append("row", currentRowNumber);
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        console.log("Mark as amended result:", await response.text());
-    } catch (error) {
-        console.error("Error marking reply as amended:", error);
+    if (currentRowNumber === null) {
+        console.warn("No row number available, cannot mark as amended.");
+        return;
+    }
+
+    const editor = document.querySelector('div[data-testid="rich-text-editor"]');
+    const amendedReply = editor ? editor.textContent.trim() : "";
+
+    // If there's an amended reply, send it via POST.
+    if (amendedReply) {
+        console.log(`Sending amended reply for row ${currentRowNumber}...`);
+        const payload = {
+            action: "markAmended",
+            rowNumber: currentRowNumber,
+            amendedReply: amendedReply
+        };
+
+        try {
+            await fetch(scriptUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+            console.log("Amended reply successfully sent.");
+        } catch (error) {
+            console.error("Error sending amended reply:", error);
+        }
+    } else {
+        // If the reply was just deleted, fall back to the original behavior
+        // of just marking the row as amended without sending the text.
+        console.log(`Marking row ${currentRowNumber} as amended (text was cleared).`);
+        const url = new URL(scriptUrl);
+        url.searchParams.append("action", "markAmended");
+        url.searchParams.append("row", currentRowNumber);
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            console.log("Mark as amended result:", await response.text());
+        } catch (error) {
+            console.error("Error marking reply as amended:", error);
+        }
     }
 }
 
@@ -129,8 +182,23 @@ function initialize() {
             const hasText = editor.querySelector('span[data-slate-string="true"]');
             if (!hasText && currentSuggestedReply) {
                 simulateTyping(editor, currentSuggestedReply);
+                suggestionUsed = true;
             }
         });
+
+        const resetSuggestionUsedIfEmpty = () => {
+            const hasText = editor.querySelector('span[data-slate-string="true"]');
+            if (!hasText && suggestionUsed) {
+                console.log("Editor cleared, resetting suggestionUsed flag.");
+                suggestionUsed = false;
+            }
+        };
+
+        // Listen for various events to robustly reset suggestionUsed if the editor is cleared
+        editor.addEventListener('input', resetSuggestionUsedIfEmpty);
+        editor.addEventListener('keyup', resetSuggestionUsedIfEmpty);
+        editor.addEventListener('blur', resetSuggestionUsedIfEmpty);
+
         editorListenersAdded.add(editor);
     }
 }
