@@ -79,13 +79,26 @@ async function markReply() {
 
 async function markReplyAsSent() {
     console.log(`Marking row ${currentRowNumber} as sent.`);
-    const url = new URL(scriptUrl);
-    url.searchParams.append("action", "markSent");
-    url.searchParams.append("row", currentRowNumber);
+    if (currentRowNumber === null) {
+        console.warn("No row number available, cannot mark as sent.");
+        return;
+    }
+
+    const payload = {
+        action: "markSent",
+        rowNumber: currentRowNumber
+    };
+
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        console.log("Mark as sent result:", await response.text());
+        await fetch(scriptUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        console.log("Mark as sent request successfully sent.");
     } catch (error) {
         console.error("Error marking reply as sent:", error);
     }
