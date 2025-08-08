@@ -49,7 +49,7 @@ async function getTicketReply(ticketId) {
     }
 }
 
-async function markReplyAsSent() {
+async function markReply() {
     if (!suggestionUsed) {
         console.log("Suggestion not used, not marking as sent via extension.");
         return;
@@ -67,13 +67,17 @@ async function markReplyAsSent() {
                           currentSuggestedReply.includes("Loading...") ||
                           currentSuggestedReply.includes("Error fetching reply");
 
-    if (currentTextInEditor !== currentSuggestedReply) {
-        if (!isPlaceholder) {
+    if (!isPlaceholder) {
+        if (currentTextInEditor !== currentSuggestedReply) {
             console.log("Text has been modified. Marking as amended first.");
             await markReplyAsAmended();
+        } else {
+            await markReplyAsSent();
         }
     }
+}
 
+async function markReplyAsSent() {
     console.log(`Marking row ${currentRowNumber} as sent.`);
     const url = new URL(scriptUrl);
     url.searchParams.append("action", "markSent");
@@ -118,20 +122,6 @@ async function markReplyAsAmended() {
         } catch (error) {
             console.error("Error sending amended reply:", error);
         }
-    } else {
-        // If the reply was just deleted, fall back to the original behavior
-        // of just marking the row as amended without sending the text.
-        console.log(`Marking row ${currentRowNumber} as amended (text was cleared).`);
-        const url = new URL(scriptUrl);
-        url.searchParams.append("action", "markAmended");
-        url.searchParams.append("row", currentRowNumber);
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            console.log("Mark as amended result:", await response.text());
-        } catch (error) {
-            console.error("Error marking reply as amended:", error);
-        }
     }
 }
 
@@ -172,7 +162,7 @@ function initialize() {
     const buttonXPath = "//button[.//span[contains(text(), 'Submit as')] and .//span[text()='Solved']]";
     const sendButton = getElementByXpath(buttonXPath);
     if (sendButton && !buttonListenersAdded.has(sendButton)) {
-        sendButton.addEventListener("click", markReplyAsSent);
+        sendButton.addEventListener("click", markReply);
         buttonListenersAdded.add(sendButton);
     }
 
