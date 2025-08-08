@@ -70,23 +70,23 @@ async function markReply() {
     if (!isPlaceholder) {
         if (currentTextInEditor !== currentSuggestedReply) {
             console.log("Text has been modified. Marking as amended first.");
-            await markReplyAsAmended();
+            await markReplyAsAmended(currentRowNumber);
         } else {
-            await markReplyAsSent();
+            await markReplyAsSent(currentRowNumber);
         }
     }
 }
 
-async function markReplyAsSent() {
-    console.log(`Marking row ${currentRowNumber} as sent.`);
-    if (currentRowNumber === null) {
+async function markReplyAsSent(rowNumber) {
+    console.log(`Marking row ${rowNumber} as sent.`);
+    if (rowNumber === null) {
         console.warn("No row number available, cannot mark as sent.");
         return;
     }
 
     const payload = {
         action: "markSent",
-        rowNumber: currentRowNumber
+        rowNumber: rowNumber
     };
 
     try {
@@ -104,8 +104,8 @@ async function markReplyAsSent() {
     }
 }
 
-async function markReplyAsAmended() {
-    if (currentRowNumber === null) {
+async function markReplyAsAmended(rowNumber) {
+    if (rowNumber === null) {
         console.warn("No row number available, cannot mark as amended.");
         return;
     }
@@ -118,7 +118,7 @@ async function markReplyAsAmended() {
         console.log(`Sending amended reply for row ${currentRowNumber}...`);
         const payload = {
             action: "markAmended",
-            rowNumber: currentRowNumber,
+            rowNumber: rowNumber,
             amendedReply: amendedReply
         };
 
