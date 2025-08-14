@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Alan Autofill",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Assists with customer support tickets on Tidio by showing suggested replies and autofill. For internal company use only.",
   "icons": {
     "16": "16.png",

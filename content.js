@@ -15,7 +15,7 @@ function removeSignature(text) {
     return text.replace(signatureRegex, "").trim();
 }
 
-async function getTicketReply(ticketId) {
+async function getTicketReply(ticketId, numIframes) {
     currentRowNumber = null;
     currentSuggestedReply = "Loading...";
     suggestionUsed = false; // Reset for new ticket
@@ -24,6 +24,7 @@ async function getTicketReply(ticketId) {
     const url = new URL(scriptUrl);
     url.searchParams.append("action", "getReply");
     url.searchParams.append("ticketId", ticketId);
+    url.searchParams.append("messageCount", numIframes);
 
     try {
         const response = await fetch(url);
@@ -160,13 +161,31 @@ function getElementByXpath(path) {
     return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 }
 
-function initialize() {
+async function initialize() {
     const ticketIdMatch = window.location.pathname.match(/\/(\d+)$/);
     if (ticketIdMatch && ticketIdMatch[1]) {
         const ticketId = ticketIdMatch[1];
         if (document.body.dataset.currentTicketId !== ticketId) {
+            // Mark ticket as being processed to prevent re-entry from other mutations
             document.body.dataset.currentTicketId = ticketId;
-            getTicketReply(ticketId);
+
+            // Poll for the iframe to ensure it's loaded before we count it.
+            // Tidio loads content dynamically, so we need to wait.
+            const selector = 'iframe[title="Email"]';
+            let emailIframes = [];
+            let attempts = 0;
+            const maxAttempts = 10; // Try for up to 5 seconds (10 * 500ms)
+
+            while (attempts < maxAttempts) {
+                emailIframes = document.querySelectorAll(selector);
+                if (emailIframes.length > 0) break; // Found it, exit loop
+                await new Promise(resolve => setTimeout(resolve, 500));
+                attempts++;
+            }
+
+            const numIframes = emailIframes.length;
+            console.log(`Found ${numIframes} iframe(s) with title='email' for ticket ${ticketId}.`);
+            getTicketReply(ticketId, numIframes);
         }
     }
 
@@ -206,7 +225,7 @@ function initialize() {
     }
 }
 
-const observer = new MutationObserver(initialize);
+const observer = new MutationObserver(() => initialize().catch(console.error));
 observer.observe(document.body, { childList: true, subtree: true });
 
-initialize();
+initialize().catch(console.error);
